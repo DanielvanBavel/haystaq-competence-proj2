@@ -1,0 +1,146 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: streamforge
+      POSTGRES_PASSWORD: streamforge
+      POSTGRES_DB: streamforge
+    ports:
+      - "${DB_PORT:-5434}:5432"
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - streamforge-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U streamforge" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  catalog:
+    build:
+      context: ./backend
+      args:
+        SERVICE: catalog-service
+    environment:
+      DB_HOST: db
+      DB_NAME: streamforge_catalog
+      DB_USER: streamforge
+      DB_PASSWORD: streamforge
+    ports:
+      - "${CATALOG_PORT:-8091}:8080"
+    volumes:
+      - ./artifacts:/artifacts
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q -O - http://localhost:8080/actuator/health | grep -q UP" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  entitlement:
+    build:
+      context: ./backend
+      args:
+        SERVICE: entitlement-service
+    environment:
+      DB_HOST: db
+      DB_NAME: streamforge_entitlement
+      DB_USER: streamforge
+      DB_PASSWORD: streamforge
+    ports:
+      - "${ENTITLEMENT_PORT:-8092}:8080"
+    volumes:
+      - ./artifacts:/artifacts
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q -O - http://localhost:8080/actuator/health | grep -q UP" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  playback:
+    build:
+      context: ./backend
+      args:
+        SERVICE: playback-service
+    environment:
+      DB_HOST: db
+      DB_NAME: streamforge_playback
+      DB_USER: streamforge
+      DB_PASSWORD: streamforge
+      CATALOG_URL: http://catalog:8080
+      ENTITLEMENT_URL: http://entitlement:8080
+    ports:
+      - "${PLAYBACK_PORT:-8093}:8080"
+    volumes:
+      - ./artifacts:/artifacts
+    depends_on:
+      db:
+        condition: service_healthy
+      catalog:
+        condition: service_started
+      entitlement:
+        condition: service_started
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q -O - http://localhost:8080/actuator/health | grep -q UP" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  gateway:
+    build:
+      context: ./backend
+      args:
+        SERVICE: edge-gateway
+    environment:
+      CATALOG_URL: http://catalog:8080
+      ENTITLEMENT_URL: http://entitlement:8080
+      PLAYBACK_URL: http://playback:8080
+      CATALOG_TIMEOUT_MS: "${CATALOG_TIMEOUT_MS:-1500}"
+    ports:
+      - "${GATEWAY_PORT:-8090}:8080"
+    volumes:
+      - ./artifacts:/artifacts
+    depends_on:
+      - catalog
+      - entitlement
+      - playback
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q -O - http://localhost:8080/actuator/health | grep -q UP" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-3002}:80"
+    depends_on:
+      - gateway
+
+  harness:
+    build:
+      context: ./harness
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      CATALOG_URL: http://catalog:8080
+      ENTITLEMENT_URL: http://entitlement:8080
+      PLAYBACK_URL: http://playback:8080
+    volumes:
+      - ./artifacts:/artifacts
+    profiles:
+      - tools
+    depends_on:
+      - gateway
+
+volumes:
+  streamforge-data:

@@ -1,0 +1,19 @@
+# Java
+target/
+*.class
+
+# Node
+node_modules/
+dist/
+
+# Artefacten van testruns (logs en rapporten worden per run gegenereerd)
+artifacts/logs/
+artifacts/runs/
+artifacts/latest-report.json
+
+# Tooling
+.env
+*.log
+.idea/
+.vscode/
+.DS_Store

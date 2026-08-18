@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: edge-gateway
+
+streamforge:
+  catalog-url: ${CATALOG_URL:http://localhost:8091}
+  entitlement-url: ${ENTITLEMENT_URL:http://localhost:8092}
+  playback-url: ${PLAYBACK_URL:http://localhost:8093}
+  catalog-timeout-ms: ${CATALOG_TIMEOUT_MS:1500}
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

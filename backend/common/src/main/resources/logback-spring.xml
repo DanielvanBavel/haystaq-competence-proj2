@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Alle services loggen JSON: naar stdout (docker compose logs) en naar een
+  bestand in de gedeelde artifacts-map. Elke regel bevat het correlatie-id,
+  zodat je een request door de hele keten kunt volgen.
+-->
+<configuration>
+
+    <springProperty scope="context" name="serviceName" source="spring.application.name" defaultValue="unknown"/>
+    <property name="LOG_DIR" value="${LOG_DIR:-/artifacts/logs}"/>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+            <includeMdcKeyName>service</includeMdcKeyName>
+            <includeMdcKeyName>status</includeMdcKeyName>
+            <includeMdcKeyName>durationMs</includeMdcKeyName>
+            <customFields>{"app":"${serviceName}"}</customFields>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>${LOG_DIR}/${serviceName}.log</file>
+        <append>true</append>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"app":"${serviceName}"}</customFields>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE"/>
+    </root>
+
+    <logger name="nl.haystaq.streamforge" level="DEBUG"/>
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="org.springframework" level="WARN"/>
+</configuration>

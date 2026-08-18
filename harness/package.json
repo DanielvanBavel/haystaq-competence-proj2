@@ -1,0 +1,10 @@
+{
+  "name": "streamforge-harness",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Testsuite die de storingen in StreamForge reproduceert en artefacten wegschrijft",
+  "main": "src/run.js",
+  "scripts": {
+    "test": "node src/run.js"
+  }
+}
